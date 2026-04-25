@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Tuktuk Pipeline Dashboard",
+  "schemaVersion": 1,
+  "description": "Live status dashboard for TukTuk Thai Shop eBay listing pipeline. Shows the 3 jobs (find SKUs, build listings, fulfill orders), current progress, active blockers, phase roadmap, and recent changelog. CK and the human team can re-open this anytime to see the project state. Updated by Claude when plans change."
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TukTuk Thai Shop — Pipeline Dashboard</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f7f7f9;
+  --card: #ffffff;
+  --border: #e3e6ec;
+  --text: #1a1d23;
+  --text-muted: #5b6373;
+  --primary: #1f4e79;
+  --primary-light: #e6eef7;
+  --accent: #e87722;
+  --accent-light: #fdefe2;
+  --success: #2e7d32;
+  --success-light: #e8f5e9;
+  --warning: #c77700;
+  --warning-light: #fff4e0;
+  --danger: #c62828;
+  --danger-light: #ffeaea;
+  --neutral: #616161;
+  --neutral-light: #f0f1f3;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 20px 16px 60px;
+}
+.wrap { max-width: 980px; margin: 0 auto; }
+
+/* Header */
+header { margin-bottom: 24px; }
+header h1 { font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+header .subtitle { color: var(--text-muted); font-size: 13px; }
+header .updated { color: var(--text-muted); font-size: 12px; margin-top: 8px; font-style: italic; }
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.card h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+
+/* Active status section */
+.status-banner {
+  background: var(--primary);
+  color: white;
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.status-banner .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin-bottom: 4px; }
+.status-banner .value { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.status-banner .detail { font-size: 13px; opacity: 0.85; }
+
+/* Stat grid */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+}
+.stat .num {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.1;
+}
+.stat .label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 6px;
+}
+.stat.warning .num { color: var(--warning); }
+.stat.success .num { color: var(--success); }
+
+/* Jobs flow */
+.jobs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  position: relative;
+}
+.job {
+  background: var(--neutral-light);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  position: relative;
+}
+.job .num {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.job .title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.job .desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+.progress {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  height: 8px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 100px;
+}
+.job .pct {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+/* Phase tracker */
+.phases {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.phase {
+  background: var(--neutral-light);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  position: relative;
+}
+.phase.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+.phase.done {
+  background: var(--success-light);
+  border-color: var(--success);
+}
+.phase .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.phase.active .label { color: var(--primary); }
+.phase.done .label { color: var(--success); }
+.phase .what {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* Changelog */
+.log-entry {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.log-entry:last-child { border-bottom: none; }
+.log-entry .when {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.log-entry .what { font-size: 13px; line-height: 1.5; }
+.log-entry .what strong { color: var(--text); }
+
+/* File map */
+.files { font-size: 12px; line-height: 1.7; color: var(--text-muted); }
+.files .file-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 4px 0; }
+.files .path { font-family: ui-monospace, "SF Mono", "Menlo", monospace; font-size: 11px; color: var(--text); }
+.files .role { color: var(--text-muted); font-size: 11px; }
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge.warning { background: var(--warning-light); color: var(--warning); }
+.badge.success { background: var(--success-light); color: var(--success); }
+.badge.neutral { background: var(--neutral-light); color: var(--neutral); }
+.badge.primary { background: var(--primary-light); color: var(--primary); }
+
+/* Bullet list */
+ul.tight { list-style: none; }
+ul.tight li {
+  padding: 4px 0 4px 18px;
+  position: relative;
+  font-size: 13px;
+  line-height: 1.5;
+}
+ul.tight li::before {
+  content: "•";
+  position: absolute;
+  left: 4px;
+  color: var(--text-muted);
+}
+
+/* Capacity bar */
+.cap-bar {
+  background: var(--neutral-light);
+  border-radius: 100px;
+  height: 10px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.cap-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 100px;
+}
+.cap-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+}
+.cap-row .label { color: var(--text-muted); }
+.cap-row .value { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .jobs { grid-template-columns: 1fr; }
+  .phases { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>TukTuk Thai Shop — Pipeline Dashboard</h1>
+    <div class="subtitle">Selling authentic Thai products on eBay. Drop-ship from Thailand.</div>
+    <div class="updated">Last updated by Claude: 2026-04-25 · Phase A active</div>
+  </header>
+
+  <!-- Active status banner -->
+  <div class="status-banner">
+    <div class="label">Active Blocker</div>
+    <div class="value">eBay Developer Account Approval</div>
+    <div class="detail">Expected ~1 business day. Once approved, unlocks comp-research automation + Sell API publishing in parallel.</div>
+  </div>
+
+  <!-- Quick stats -->
+  <div class="stat-grid">
+    <div class="stat"><div class="num">38</div><div class="label">SKUs in shortlist</div></div>
+    <div class="stat"><div class="num">4</div><div class="label">Category templates</div></div>
+    <div class="stat success"><div class="num">524</div><div class="label">Existing eBay listings</div></div>
+    <div class="stat warning"><div class="num">1</div><div class="label">Active blockers</div></div>
+  </div>
+
+  <!-- The 3 jobs -->
+  <div class="card">
+    <h2>The 3 Jobs (everything else supports these)</h2>
+    <div class="jobs">
+      <div class="job">
+        <div class="num">JOB 1</div>
+        <div class="title">Find SKUs that pass</div>
+        <div class="desc">eBay comp research → fill yellow cells → formula returns PASS or REJECT</div>
+        <div class="progress"><div class="progress-bar" style="width: 80%"></div></div>
+        <div class="pct">80% — shortlists built, comp research methodology validated, awaiting API for auto-fill</div>
+      </div>
+      <div class="job">
+        <div class="num">JOB 2</div>
+        <div class="title">Build listings for PASS SKUs</div>
+        <div class="desc">Recipe runs scrape → rewrite copy → brand image → draft → publish</div>
+        <div class="progress"><div class="progress-bar" style="width: 60%"></div></div>
+        <div class="pct">60% — 4 templates locked, recipe + scripts ready, Srichand dry run done</div>
+      </div>
+      <div class="job">
+        <div class="num">JOB 3</div>
+        <div class="title">Fulfill orders</div>
+        <div class="desc">Buyer orders on eBay → CK orders from Konvy → repackage in Thailand → ship int'l</div>
+        <div class="progress"><div class="progress-bar" style="width: 0%"></div></div>
+        <div class="pct">0% — waits on first real eBay sale</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase tracker -->
+  <div class="card">
+    <h2>Phase Roadmap</h2>
+    <div class="phases">
+      <div class="phase active">
+        <div class="label">Phase A · Now</div>
+        <div class="what">Wait for eBay API approval. Konvy beauty/skincare focus locked. Lightweight format only.</div>
+      </div>
+      <div class="phase">
+        <div class="label">Phase B · Next</div>
+        <div class="what">API approves → build comp-research script → run on shortlist → first SKU live (sandbox then prod).</div>
+      </div>
+      <div class="phase">
+        <div class="label">Phase C</div>
+        <div class="what">Run recipe on all PASS SKUs. 10–20 listings per batch. Catalog grows.</div>
+      </div>
+      <div class="phase">
+        <div class="label">Phase D</div>
+        <div class="what">First sale → CK fulfills. Track winners. Iterate. Scale to thousands.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- eBay account capacity -->
+  <div class="card">
+    <h2>eBay Store Capacity</h2>
+    <div style="margin-bottom: 12px;">
+      <div class="cap-row"><div class="label">Items listed</div><div class="value">524 / 75,000</div></div>
+      <div class="cap-bar"><div class="cap-bar-fill" style="width: 0.7%"></div></div>
+    </div>
+    <div>
+      <div class="cap-row"><div class="label">Active value</div><div class="value">$28,565 / $750,000</div></div>
+      <div class="cap-bar"><div class="cap-bar-fill" style="width: 3.8%"></div></div>
+    </div>
+    <p style="margin-top: 12px; font-size: 12px; color: var(--text-muted);">
+      Business account with established track record. eBay listing limits are <strong>not a binding constraint</strong> — pipeline throughput is the real ceiling.
+    </p>
+  </div>
+
+  <!-- Strategic focus -->
+  <div class="card">
+    <h2>Phase A Focus — Konvy Beauty / Skincare, Lightweight Only</h2>
+    <ul class="tight">
+      <li>Lightweight = lower shipping cost = wider margin band</li>
+      <li>Sub-$30 beauty = impulse purchase decisions, faster sales velocity</li>
+      <li>Niche Thai brands (Srichand, Cathy Doll, Smooth E, etc.) compete well even against US-stock sellers</li>
+      <li>Curated catalog of ~50–300 SKUs beats bulk-list-everything approach (eBay rewards velocity, not volume)</li>
+      <li>Food + household categories deferred to a later phase</li>
+    </ul>
+  </div>
+
+  <!-- Recent changelog -->
+  <div class="card">
+    <h2>Recent Changes</h2>
+    <div class="log-entry">
+      <div class="when">2026-04-25</div>
+      <div class="what"><strong>Pipeline dashboard created</strong> — this artifact. Shareable with the human team. Claude updates as plans change.</div>
+    </div>
+    <div class="log-entry">
+      <div class="when">2026-04-25</div>
+      <div class="what"><strong>eBay capacity confirmed</strong> — business account, 524 / 75K items used. Listing limit no longer a constraint.</div>
+    </div>
+    <div class="log-entry">
+      <div class="when">2026-04-25</div>
+      <div class="what"><strong>Sweep expanded</strong> — 24 Konvy Thai brands found, ~127 candidate SKUs collected (Konvy rate-limits at ~40 req/min, so polite pacing required).</div>
+    </div>
+    <div class="log-entry">
+      <div class="when">2026-04-25</div>
+      <div class="what"><strong>Selection criteria refined</strong> — banned-claim products NOT excluded (handle at copy level), TEST_LIST strategy added for branded niche items overriding formula REJECT.</div>
+    </div>
+    <div class="log-entry">
+      <div class="when">2026-04-25</div>
+      <div class="what"><strong>Strategic pivot</strong> — Konvy beauty/skincare lightweight only. Food + Lazada household deferred.</div>
+    </div>
+    <div class="log-entry">
+      <div class="when">2026-04-25</div>
+      <div class="what"><strong>Comp research walkthrough</strong> — 3 SKUs tested (Srichand, Hanami, Jim Thompson), all REJECT, methodology proven.</div>
+    </div>
+  </div>
+
+  <!-- File map -->
+  <div class="card">
+    <h2>Where Everything Lives</h2>
+    <div class="files">
+      <div class="file-row"><div class="path">pipeline-overview.md</div><div class="role">Master big-picture doc</div></div>
+      <div class="file-row"><div class="path">pipeline-test/product-shortlist.xlsx</div><div class="role">Konvy 20 SKUs (yellow cells = comp medians)</div></div>
+      <div class="file-row"><div class="path">pipeline-test/lazada-shortlist.xlsx</div><div class="role">Lazada 18 SKUs (deferred per Phase A)</div></div>
+      <div class="file-row"><div class="path">pipeline-test/listing-template/_core.md</div><div class="role">Universal rules + pricing formula v0.6</div></div>
+      <div class="file-row"><div class="path">pipeline-test/listing-template/{beauty-makeup, skincare, food, household}.md</div><div class="role">Per-category rulebooks</div></div>
+      <div class="file-row"><div class="path">pipeline-test/recipe/SKILL.md</div><div class="role">15-step listing recipe + Konvy + Lazada scraping patterns</div></div>
+      <div class="file-row"><div class="path">pipeline-test/recipe/scripts/compute_pricing.py</div><div class="role">Pricing formula in code</div></div>
+      <div class="file-row"><div class="path">pipeline-test/recipe/scripts/brand_image.py</div><div class="role">Image compositing (1080×1080 frame)</div></div>
+      <div class="file-row"><div class="path">pipeline-test/suppliers-research.md</div><div class="role">Supplier picks + fulfillment model</div></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <p style="text-align: center; color: var(--text-muted); font-size: 11px; margin-top: 20px;">
+    This dashboard is a living artifact. Claude updates it whenever the plan changes — new supplier, new category, formula tuning, blocker resolved, milestone hit.
+    <br>Source of truth: <strong>pipeline-overview.md</strong> in the workspace folder.
+  </p>
+
+</div>
+</body>
+</html>
